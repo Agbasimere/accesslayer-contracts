@@ -1,7 +1,7 @@
 //! Tests verifying that the buy-key event includes the payment amount.
 
 use creator_keys::{CreatorKeysContract, CreatorKeysContractClient};
-use soroban_sdk::{testutils::Address as _, testutils::Events, Env, IntoVal, String, symbol_short};
+use soroban_sdk::{symbol_short, testutils::Address as _, testutils::Events, Env, IntoVal, String};
 
 #[test]
 fn test_buy_key_event_includes_payment_amount() {
