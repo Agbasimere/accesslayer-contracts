@@ -2,6 +2,73 @@ use super::*;
 use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 #[test]
+fn test_read_key_balance_returns_registered_creator_supply() {
+    let env = Env::default();
+    let creator = Address::generate(&env);
+    let contract_id = env.register(CreatorKeysContract, ());
+
+    let profile = CreatorProfile {
+        creator: creator.clone(),
+        handle: String::from_str(&env, "alice"),
+        supply: 7,
+        holder_count: 3,
+        fee_recipient: creator.clone(),
+    };
+
+    let supply = env.as_contract(&contract_id, || {
+        env.storage()
+            .persistent()
+            .set(&DataKey::Creator(creator.clone()), &profile);
+
+        read_key_balance(&env, &creator)
+    });
+    assert_eq!(supply, 7);
+}
+
+#[test]
+fn test_read_key_balance_returns_zero_for_missing_creator() {
+    let env = Env::default();
+    let missing_creator = Address::generate(&env);
+    let contract_id = env.register(CreatorKeysContract, ());
+
+    let supply = env.as_contract(&contract_id, || read_key_balance(&env, &missing_creator));
+    assert_eq!(supply, 0);
+}
+
+#[test]
+fn test_get_fee_config_returns_stored_protocol_config() {
+    let env = Env::default();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let config = fee::FeeConfig {
+        creator_bps: 9000,
+        protocol_bps: 1000,
+    };
+
+    let stored = env.as_contract(&contract_id, || {
+        env.storage().persistent().set(&DataKey::FeeConfig, &config);
+        CreatorKeysContract::get_fee_config(env.clone()).unwrap()
+    });
+    assert_eq!(stored.creator_bps, 9000);
+    assert_eq!(stored.protocol_bps, 1000);
+}
+
+#[test]
+fn test_get_fee_config_reads_protocol_fee_bps() {
+    let env = Env::default();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let config = fee::FeeConfig {
+        creator_bps: 7500,
+        protocol_bps: 2500,
+    };
+
+    let stored = env.as_contract(&contract_id, || {
+        env.storage().persistent().set(&DataKey::FeeConfig, &config);
+        CreatorKeysContract::get_fee_config(env.clone()).unwrap()
+    });
+    assert_eq!(stored.protocol_bps, 2500);
+}
+
+#[test]
 fn test_register_creator() {
     let env = Env::default();
     env.mock_all_auths();
