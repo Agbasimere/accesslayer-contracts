@@ -146,6 +146,9 @@ pub struct QuoteResponse {
     pub total_amount: i128,
 }
 
+/// Shared result type for read-only quote methods.
+pub type QuoteViewResult = Result<QuoteResponse, ContractError>;
+
 /// Stable protocol state version for read-only consumers.
 ///
 /// Bump this value only when externally consumed protocol state semantics change.
@@ -182,6 +185,17 @@ pub fn read_creator_profile(env: &Env, creator: &Address) -> Option<CreatorProfi
         .get::<DataKey, CreatorProfile>(&key)
 }
 
+/// Reads a registered creator profile, returning an error when the creator is missing.
+///
+/// Use this helper for methods that require an existing creator and should return
+/// a structured contract error instead of a default value.
+pub fn read_registered_creator_profile(
+    env: &Env,
+    creator: &Address,
+) -> Result<CreatorProfile, ContractError> {
+    read_creator_profile(env, creator).ok_or(ContractError::NotRegistered)
+}
+
 /// Reads the key balance (supply) for a creator, returning `0` for unregistered creators.
 ///
 /// Use this helper wherever repeated key balance read logic is needed to keep
@@ -200,7 +214,7 @@ fn checked_format_quote_response(
     creator_fee: i128,
     protocol_fee: i128,
     is_buy: bool,
-) -> Result<QuoteResponse, ContractError> {
+) -> QuoteViewResult {
     let fees = creator_fee
         .checked_add(protocol_fee)
         .ok_or(ContractError::Overflow)?;
@@ -280,8 +294,7 @@ impl CreatorKeysContract {
             return Err(ContractError::InsufficientPayment);
         }
 
-        let mut profile: CreatorProfile =
-            read_creator_profile(&env, &creator).ok_or(ContractError::NotRegistered)?;
+        let mut profile: CreatorProfile = read_registered_creator_profile(&env, &creator)?;
 
         let balance_key = DataKey::KeyBalance(creator.clone(), buyer.clone());
         let current_balance: u32 = env.storage().persistent().get(&balance_key).unwrap_or(0);
@@ -317,8 +330,7 @@ impl CreatorKeysContract {
     pub fn sell_key(env: Env, creator: Address, seller: Address) -> Result<u32, ContractError> {
         seller.require_auth();
 
-        let mut profile: CreatorProfile =
-            read_creator_profile(&env, &creator).ok_or(ContractError::NotRegistered)?;
+        let mut profile: CreatorProfile = read_registered_creator_profile(&env, &creator)?;
 
         let balance_key = DataKey::KeyBalance(creator.clone(), seller);
         let current_balance: u32 = env.storage().persistent().get(&balance_key).unwrap_or(0);
@@ -377,7 +389,7 @@ impl CreatorKeysContract {
     }
 
     pub fn get_creator(env: Env, creator: Address) -> Result<CreatorProfile, ContractError> {
-        read_creator_profile(&env, &creator).ok_or(ContractError::NotRegistered)
+        read_registered_creator_profile(&env, &creator)
     }
 
     /// Read-only view: returns stable creator details.
@@ -422,6 +434,14 @@ impl CreatorKeysContract {
         read_key_balance(&env, &creator)
     }
 
+    /// Read-only view: returns the current supply for a registered creator.
+    ///
+    /// Fails with [`ContractError::NotRegistered`] if the creator does not exist.
+    pub fn get_creator_supply(env: Env, creator: Address) -> Result<u32, ContractError> {
+        let profile = read_registered_creator_profile(&env, &creator)?;
+        Ok(profile.supply)
+    }
+
     /// Read-only view: returns the number of unique holders for a creator.
     ///
     /// Returns `0` if the creator is not registered, avoiding panics for
@@ -445,7 +465,7 @@ impl CreatorKeysContract {
     /// Fails with [`ContractError::NotRegistered`] if the creator is not registered.
     /// Reuses current creator storage access patterns.
     pub fn get_creator_fee_recipient(env: Env, creator: Address) -> Result<Address, ContractError> {
-        let profile = read_creator_profile(&env, &creator).ok_or(ContractError::NotRegistered)?;
+        let profile = read_registered_creator_profile(&env, &creator)?;
         Ok(profile.fee_recipient)
     }
 
@@ -543,7 +563,7 @@ impl CreatorKeysContract {
     /// config has been set. Use this method for indexers and read-only callers that need
     /// a non-optional result.
     pub fn get_creator_fee_config(env: Env, creator: Address) -> CreatorFeeView {
-        let is_registered = read_creator_profile(&env, &creator).is_some();
+        let is_registered = read_registered_creator_profile(&env, &creator).is_ok();
 
         if !is_registered {
             return CreatorFeeView {
