@@ -177,6 +177,11 @@ pub type QuoteViewResult = Result<QuoteResponse, ContractError>;
 /// Bump this value only when externally consumed protocol state semantics change.
 pub const PROTOCOL_STATE_VERSION: u32 = 1;
 
+/// Decimal precision used by creator key values.
+///
+/// Matches the standard Soroban token decimal convention (7 decimal places).
+pub const KEY_DECIMALS: u32 = 7;
+
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
@@ -458,6 +463,13 @@ impl CreatorKeysContract {
     /// protocol-state schema/semantics revisions without mutating contract state.
     pub fn get_protocol_state_version(_env: Env) -> u32 {
         PROTOCOL_STATE_VERSION
+    }
+
+    /// Read-only view: returns the decimal precision used by creator key values.
+    ///
+    /// Returns the fixed [`KEY_DECIMALS`] constant. Does not read or mutate contract state.
+    pub fn get_key_decimals(_env: Env) -> u32 {
+        KEY_DECIMALS
     }
 
     /// Read-only view: returns the total key supply for a creator.
