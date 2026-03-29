@@ -600,6 +600,14 @@ impl CreatorKeysContract {
         env.storage().persistent().get(&DataKey::AdminAddress)
     }
 
+    /// Read-only view: returns whether protocol configuration has been initialized.
+    ///
+    /// Returns `true` once a protocol fee configuration has been stored and `false`
+    /// otherwise. Does not mutate contract state.
+    pub fn is_protocol_config_initialized(env: Env) -> bool {
+        read_protocol_fee_config(&env).is_some()
+    }
+
     /// Read-only view: returns the current protocol fee configuration.
     ///
     /// Returns a stable [`ProtocolFeeView`] regardless of whether a fee config has been set.
