@@ -1,4 +1,3 @@
-
 #![no_std]
 
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env, String};
@@ -230,7 +229,6 @@ pub fn read_key_balance(env: &Env, creator: &Address) -> u32 {
         .map(|p| p.supply)
         .unwrap_or(0)
 }
-
 
 fn read_protocol_fee_config(env: &Env) -> Option<fee::FeeConfig> {
     env.storage()
@@ -557,7 +555,7 @@ impl CreatorKeysContract {
     }
 
     pub fn get_fee_config(env: Env) -> Option<fee::FeeConfig> {
-    read_protocol_fee_config(&env)
+        read_protocol_fee_config(&env)
     }
 
     /// Sets the protocol treasury address.
