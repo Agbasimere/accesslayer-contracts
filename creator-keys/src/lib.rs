@@ -665,11 +665,7 @@ impl CreatorKeysContract {
     /// When no config is stored, `is_configured` is `false` and both bps fields are `0`.
     /// Use this method for indexers and read-only callers that need a non-optional result.
     pub fn get_protocol_fee_view(env: Env) -> ProtocolFeeView {
-        match env
-            .storage()
-            .persistent()
-            .get::<DataKey, fee::FeeConfig>(&constants::storage::FEE_CONFIG)
-        {
+        match read_protocol_fee_config(&env) {
             Some(config) => ProtocolFeeView {
                 creator_bps: config.creator_bps,
                 protocol_bps: config.protocol_bps,
